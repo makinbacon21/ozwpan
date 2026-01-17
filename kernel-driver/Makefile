@@ -3,45 +3,42 @@
 # Released under the GNU General Public License Version 2 (GPLv2).
 # -----------------------------------------------------------------------------
 
-# fallback to the current kernel source
-KSRC ?= /lib/modules/$(shell uname -r)/build
-
+# Kernel source directory
+KVERSION ?= $(shell uname -r)
+KSRC ?= /lib/modules/$(KVERSION)/build
 KMOD_SRC ?= $(CURDIR)
-
 KMOD_OPTIONS = CONFIG_USB_WPAN_HCD=m
 
-# Don't build any of the other drivers
-#KMOD_OPTIONS +=
-#EXTRA_CFLAGS +=
-
 all:
-	$(MAKE) -C $(KSRC) M=$(KMOD_SRC) $(KMOD_OPTIONS) $(MAKECMDGOALS) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
-
-.PHONY: all clean load unload reload test
+	$(MAKE) -C $(KSRC) M=$(KMOD_SRC) $(KMOD_OPTIONS) modules EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 
 clean:
-	$(MAKE) -C $(KSRC) M=$(KMOD_SRC) clean $(KMOD_OPTIONS)
+	$(MAKE) -C $(KSRC) M=$(KMOD_SRC) clean
+
+install:
+	$(MAKE) -C $(KSRC) M=$(KMOD_SRC) modules_install
+
+.PHONY: all clean install load unload reload test
 
 load:
 	insmod $(KMOD_SRC)/ozwpan.ko
 
 unload:
-	rmmod ozwpan
+	-rmmod ozwpan
 
 reload: unload load
 
 test: all reload
 
+# Kernel module build configuration
 obj-$(CONFIG_USB_WPAN_HCD) += ozwpan.o
 ozwpan-y := \
-        ozmain.o \
-        ozpd.o \
-        ozusbsvc.o \
-        ozusbsvc1.o \
-        ozhcd.o \
-        ozeltbuf.o \
-        ozproto.o \
-        ozcdev.o \
-        ozurbparanoia.o
-
-
+	ozmain.o \
+	ozpd.o \
+	ozusbsvc.o \
+	ozusbsvc1.o \
+	ozhcd.o \
+	ozeltbuf.o \
+	ozproto.o \
+	ozcdev.o \
+	ozurbparanoia.o
