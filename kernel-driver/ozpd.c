@@ -17,7 +17,6 @@
 #include "ozproto.h"
 #include "ozcdev.h"
 #include "ozusbsvc.h"
-#include <asm/unaligned.h>
 #include <linux/uaccess.h>
 #include <net/psnap.h>
 
@@ -127,10 +126,8 @@ struct oz_pd *oz_pd_alloc(const u8 *mac_addr)
 						(unsigned long)pd);
 	tasklet_init(&pd->timeout_tasklet, oz_pd_timeout_handler,
 						(unsigned long)pd);
-	hrtimer_init(&pd->heartbeat, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	hrtimer_init(&pd->timeout, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	pd->heartbeat.function = oz_pd_heartbeat_event;
-	pd->timeout.function = oz_pd_timeout_event;
+	hrtimer_setup(&pd->heartbeat, oz_pd_heartbeat_event, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_setup(&pd->timeout, oz_pd_timeout_event, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 	return pd;
 }

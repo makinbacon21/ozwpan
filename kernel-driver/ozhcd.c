@@ -29,7 +29,7 @@
 #include <linux/slab.h>
 #include <linux/export.h>
 #include "linux/usb/hcd.h"
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include "ozdbg.h"
 #include "ozusbif.h"
 #include "ozurbparanoia.h"
@@ -77,7 +77,7 @@ struct oz_endpoint {
 	struct list_head urb_list;	/* List of oz_urb_link items. */
 	struct list_head link;		/* For isoc ep, links in to isoc
 					   lists of oz_port. */
-	struct timespec timestamp;
+	struct timespec64 timestamp;
 	int credit;
 	int credit_ceiling;
 	u8 ep_num;
@@ -164,7 +164,7 @@ static int oz_hcd_hub_control(struct usb_hcd *hcd, u16 req_type, u16 wvalue,
 static int oz_hcd_bus_suspend(struct usb_hcd *hcd);
 static int oz_hcd_bus_resume(struct usb_hcd *hcd);
 static int oz_plat_probe(struct platform_device *dev);
-static int oz_plat_remove(struct platform_device *dev);
+static void oz_plat_remove(struct platform_device *dev);
 static void oz_plat_shutdown(struct platform_device *dev);
 static int oz_plat_suspend(struct platform_device *dev, pm_message_t msg);
 static int oz_plat_resume(struct platform_device *dev);
@@ -482,7 +482,7 @@ static int oz_enqueue_ep_urb(struct oz_port *port, u8 ep_addr, int in_dir,
 	if (port->hpd) {
 		list_add_tail(&urbl->link, &ep->urb_list);
 		if (!in_dir && ep_addr && (ep->credit < 0)) {
-			getrawmonotonic(&ep->timestamp);
+			ktime_get_raw_ts64(&ep->timestamp);
 			ep->credit = 0;
 		}
 	} else {
@@ -1042,17 +1042,17 @@ int oz_hcd_heartbeat(void *hport)
 	LIST_HEAD(xfr_list);
 	struct urb *urb;
 	struct oz_endpoint *ep;
-	struct timespec ts, delta;
+	struct timespec64 ts, delta;
 
-	getrawmonotonic(&ts);
+	ktime_get_raw_ts64(&ts);
 	/* Check the OUT isoc endpoints to see if any URB data can be sent.
 	 */
 	spin_lock_bh(&ozhcd->hcd_lock);
 	list_for_each_entry(ep, &port->isoc_out_ep, link) {
 		if (ep->credit < 0)
 			continue;
-		delta = timespec_sub(ts, ep->timestamp);
-		ep->credit += div_u64(timespec_to_ns(&delta), NSEC_PER_MSEC);
+		delta = timespec64_sub(ts, ep->timestamp);
+		ep->credit += div_u64(timespec64_to_ns(&delta), NSEC_PER_MSEC);
 		if (ep->credit > ep->credit_ceiling)
 			ep->credit = ep->credit_ceiling;
 		ep->timestamp = ts;
@@ -1093,8 +1093,8 @@ int oz_hcd_heartbeat(void *hport)
 			}
 			continue;
 		}
-		delta = timespec_sub(ts, ep->timestamp);
-		ep->credit += div_u64(timespec_to_ns(&delta), NSEC_PER_MSEC);
+		delta = timespec64_sub(ts, ep->timestamp);
+		ep->credit += div_u64(timespec64_to_ns(&delta), NSEC_PER_MSEC);
 		ep->timestamp = ts;
 		list_for_each_entry_safe(urbl, n, &ep->urb_list, link) {
 			struct urb *urb = urbl->urb;
@@ -2207,13 +2207,13 @@ static int oz_plat_probe(struct platform_device *dev)
 /*
  * Context: unknown
  */
-static int oz_plat_remove(struct platform_device *dev)
+static void oz_plat_remove(struct platform_device *dev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(dev);
 	struct oz_hcd *ozhcd;
 
 	if (hcd == NULL)
-		return -1;
+		return;
 	ozhcd = oz_hcd_private(hcd);
 	spin_lock_bh(&g_hcdlock);
 	if (ozhcd == g_ozhcd)
@@ -2224,7 +2224,6 @@ static int oz_plat_remove(struct platform_device *dev)
 	oz_dbg(ON, "Removing hcd\n");
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
-	return 0;
 }
 
 /*

@@ -20,7 +20,8 @@
 #include "ozusbsvc.h"
 
 #include "ozappif.h"
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
+
 #include <linux/uaccess.h>
 #include <net/psnap.h>
 
@@ -182,7 +183,7 @@ static struct oz_pd *oz_connect_req(struct oz_pd *cur_pd, struct oz_elt *elt,
 		pd = oz_pd_alloc(pd_addr);
 		if (pd == NULL)
 			return NULL;
-		getnstimeofday(&pd->last_rx_timestamp);
+		ktime_get_real_ts64(&pd->last_rx_timestamp);
 		spin_lock_bh(&g_polling_lock);
 		list_for_each(e, &g_pd_list) {
 			pd2 = list_entry(e, struct oz_pd, link);
@@ -337,7 +338,7 @@ static void oz_rx_frame(struct sk_buff *skb)
 	int length;
 	struct oz_pd *pd = NULL;
 	struct oz_hdr *oz_hdr = (struct oz_hdr *)skb_network_header(skb);
-	struct timespec current_time;
+	struct timespec64 current_time;
 	int dup = 0;
 	u32 pkt_num;
 
@@ -360,7 +361,7 @@ static void oz_rx_frame(struct sk_buff *skb)
 	if (pd) {
 		if (!(pd->state & OZ_PD_S_CONNECTED))
 			oz_pd_set_state(pd, OZ_PD_S_CONNECTED);
-		getnstimeofday(&current_time);
+		ktime_get_real_ts64(&current_time);
 		if ((current_time.tv_sec != pd->last_rx_timestamp.tv_sec) ||
 			(pd->presleep < MSEC_PER_SEC))  {
 			oz_timer_add(pd, OZ_TIMER_TOUT,	pd->presleep);
@@ -810,4 +811,3 @@ int oz_get_pd_list(struct oz_mac_addr *addr, int max_count)
 	spin_unlock_bh(&g_polling_lock);
 	return count;
 }
-

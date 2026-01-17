@@ -7,6 +7,7 @@
 #define _OZPD_H_
 
 #include <linux/interrupt.h>
+#include <linux/timekeeping.h>
 #include "ozeltbuf.h"
 
 /* PD state
@@ -74,7 +75,7 @@ struct oz_pd {
 	u8		isoc_sent;
 	u32		last_rx_pkt_num;
 	u32		last_tx_pkt_num;
-	struct timespec last_rx_timestamp;
+	struct timespec64 last_rx_timestamp;
 	u32		trigger_pkt_num;
 	unsigned long	pulse_time;
 	unsigned long	pulse_period;

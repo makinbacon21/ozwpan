@@ -252,12 +252,9 @@ static long oz_cdev_ioctl(struct file *filp, unsigned int cmd,
 		return -ENOTTY;
 	if (_IOC_NR(cmd) > OZ_IOCTL_MAX)
 		return -ENOTTY;
-	if (_IOC_DIR(cmd) & _IOC_READ)
-		rc = !access_ok(VERIFY_WRITE, (void __user *)arg,
-			_IOC_SIZE(cmd));
-	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		rc = !access_ok(VERIFY_READ, (void __user *)arg,
-			_IOC_SIZE(cmd));
+	/// todo: bitwise logic when sober
+	if (_IOC_DIR(cmd) & _IOC_READ || _IOC_DIR(cmd) & _IOC_WRITE)
+		rc = !access_ok((void __user *)arg, _IOC_SIZE(cmd));
 	if (rc)
 		return -EFAULT;
 	switch (cmd) {
@@ -372,7 +369,7 @@ int oz_cdev_register(void)
 		oz_dbg(ON, "Failed to add cdev\n");
 		goto unregister;
 	}
-	g_oz_class = class_create(THIS_MODULE, "ozmo_wpan");
+	g_oz_class = class_create("ozmo_wpan");
 	if (IS_ERR(g_oz_class)) {
 		oz_dbg(ON, "Failed to register ozmo_wpan class\n");
 		err = PTR_ERR(g_oz_class);

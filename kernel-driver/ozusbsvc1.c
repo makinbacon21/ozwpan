@@ -11,7 +11,7 @@
 #include <linux/netdevice.h>
 #include <linux/errno.h>
 #include <linux/input.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include "ozdbg.h"
 #include "ozprotocol.h"
 #include "ozeltbuf.h"

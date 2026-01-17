@@ -1,0 +1,9 @@
+./ozmain.o
+./ozpd.o
+./ozusbsvc.o
+./ozusbsvc1.o
+./ozhcd.o
+./ozeltbuf.o
+./ozproto.o
+./ozcdev.o
+./ozurbparanoia.o
